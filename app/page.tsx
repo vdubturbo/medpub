@@ -13,12 +13,8 @@ export default function HomePage() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
-    const redirectTimer = setTimeout(() => {
-      router.push('/ui/articles_dashboard')
-    }, 5000)
     return () => {
       listener.subscription.unsubscribe()
-      clearTimeout(redirectTimer)
     }
   }, [])
 

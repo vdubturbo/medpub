@@ -4,14 +4,18 @@ import openai
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv()
+# Load .env file from project root
+load_dotenv(dotenv_path=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../.env')))
 
-# Set API keys and Supabase client
+# Debugging output to verify environment variables
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# print("SUPABASE_URL:", SUPABASE_URL if SUPABASE_URL else "NOT FOUND")
+# print("SUPABASE_KEY:", SUPABASE_KEY[:8] + "..." if SUPABASE_KEY else "NOT FOUND")
+# print("OPENAI_API_KEY:", OPENAI_API_KEY[:8] + "..." if OPENAI_API_KEY else "NOT FOUND")
 
+# Set API keys and Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
@@ -67,18 +71,30 @@ def extract_authors(text):
     )
     return response.choices[0].message.content.strip()
 
-def summarize_text(text):
-    """Summarize the given text using OpenAI."""
-    prompt = f"Summarize the following medical research article:\n\n{text}\n\nSummary:"
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=500,
-        temperature=0.4
-    )
-    return response.choices[0].message.content.strip()
+from textwrap import wrap
 
-def insert_article(upload_id, title, summary, content, authors_string, page_count):
+def summarize_text(text):
+    """Summarize the given text using OpenAI in chunks."""
+    chunks = wrap(text, 4000)  # roughly 1000 tokens per chunk
+    summaries = []
+
+    for idx, chunk in enumerate(chunks):
+        prompt = f"Provide a brief and concise summary (one or two paragraphs) of the following portion of a medical research article:\n\n{chunk}\n\nSummary:"
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=500,
+                temperature=0.4
+            )
+            summaries.append(response.choices[0].message.content.strip())
+        except Exception as e:
+            print(f"Error summarizing chunk {idx+1}: {e}")
+            break
+
+    return "\n".join(summaries)
+
+def insert_article(upload_id, title, summary, content, authors_string, page_count, original_file_name):
     """Insert article and related author records into Supabase."""
     existing = supabase.table("articles").select("id").eq("upload_id", upload_id).execute()
     if existing.data:
@@ -93,7 +109,8 @@ def insert_article(upload_id, title, summary, content, authors_string, page_coun
         "content": content,
         "category": "uncategorized",
         "model_used": "gpt-3.5-turbo",
-        "page_count": page_count
+        "page_count": page_count,
+        "original_file_name": original_file_name,
     }).execute()
 
     if not insert_result.data:
@@ -139,7 +156,7 @@ if __name__ == "__main__":
         title_guess = extract_title(full_text)
         authors = extract_authors(full_text)
 
-        insert_article(upload_id, title_guess, summary, full_text, authors, page_count)
+        insert_article(upload_id, title_guess, summary, full_text, authors, page_count, file_name)
         mark_upload_complete(upload_id)
 
         print(f"✓ Processed: {file_name}")
