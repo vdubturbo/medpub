@@ -1,0 +1,65 @@
+# Node modules
+node_modules/
+.next/
+out/
+dist/
+
+# Env files
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE files
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.egg-info/
+.eggs/
+*.cache/
+*.mypy_cache/
+*.pytest_cache/
+
+# Python virtual environments
+venv/
+env/
+.ingest-env/
+.ingest/
+*.venv/
+.venv/
+
+# Supabase generated artifacts (optional)
+supabase/.temp/
+supabase/migrations/
+
+# Output files or test PDFs
+*.pdf
+*.zip
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Local dev upload cache
+uploads/
+
+# Build artifacts
+build/
